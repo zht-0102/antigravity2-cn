@@ -204,6 +204,25 @@ function generateJs() {
         return null;
     }
 
+    function translateAttr(v) {
+        if (!v) return null;
+        const t = norm(v);
+        const shortcutTrans = translateWithShortcut(t);
+        if (shortcutTrans) return shortcutTrans;
+        if (map.has(t)) return map.get(t);
+        if (lowerMap.has(t.toLowerCase())) return lowerMap.get(t.toLowerCase());
+        if (/^Select model, current: (.+)$/i.test(t)) {
+            return t.replace(/^Select model, current: (.+)$/i, (m, p) => (USE_TW ? "選擇模型，目前：" : "选择模型，当前：") + p);
+        }
+        if (/^Agent permissions preset selector, current: (.+)$/i.test(t)) {
+            return t.replace(/^Agent permissions preset selector, current: (.+)$/i, (m, p) => (USE_TW ? "智能體權限預設選擇器，目前：" : "智能体权限预设选择器，当前：") + p);
+        }
+        if (/^Load older messages, showing (\d+) of (\d+)$/i.test(t)) {
+            return t.replace(/^Load older messages, showing (\d+) of (\d+)$/i, (m, a, b) => (USE_TW ? ("載入較早的訊息，顯示第 " + a + " / " + b + " 則") : ("加载更早的消息，显示第 " + a + " / " + b + " 条")));
+        }
+        return null;
+    }
+
     // 核心隔离判断：回溯检查当前节点是否逻辑上属于“禁止汉化区”
     function isInBlockedZone(node) {
         let curr = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
@@ -220,33 +239,28 @@ function generateJs() {
                 const dataAuthor = curr.getAttribute('data-author');
                 if (dataAuthor && /^(user|human|client|customer|my)$/i.test(dataAuthor)) return true;
                 
-                // 阻断 ID 包含 chat, conversation, interactive 的容器
-                const id = curr.id || '';
-                if (typeof id === 'string') {
-                    const idLower = id.toLowerCase();
-                    if (idLower.includes('chat') || idLower.includes('conversation') || idLower.includes('interactive')) return true;
-                }
+                // 阻断 ID 包含 chat, conversation, interactive 的容器（排除常规按钮与链接）
+                if (curr.tagName !== 'BUTTON' && curr.tagName !== 'A' && curr.tagName !== 'INPUT') {
+                    const id = curr.id || '';
+                    if (typeof id === 'string') {
+                        const idLower = id.toLowerCase();
+                        if (idLower === 'chat-container' || idLower === 'conversation-pane' || idLower === 'chat-history') return true;
+                    }
 
-                // 阻断 aria-label 包含 Chat, AI, Ask, conversation, interactive 的容器
-                const ariaLabel = curr.getAttribute('aria-label') || '';
-                if (ariaLabel) {
-                    const alLower = ariaLabel.toLowerCase();
-                    if (alLower.includes('chat') || alLower.includes('ai') || alLower.includes('ask') || alLower.includes('conversation') || alLower.includes('interactive')) return true;
+                    // 阻断消息日志容器
+                    const ariaLabel = curr.getAttribute('aria-label') || '';
+                    if (ariaLabel) {
+                        const alLower = ariaLabel.toLowerCase();
+                        if (alLower === 'chat history' || alLower === 'conversation log' || alLower === 'chat messages' || alLower === 'messages log') return true;
+                    }
                 }
 
                 const className = curr.className || '';
                 if (typeof className === 'string') {
                     if (BLOCKED_CLASSES.some(cls => className.includes(cls))) return true;
 
-                    const clsLower = className.toLowerCase();
-                    // 阻断类名包含 chat, conversation, interactive 的容器
-                    if (clsLower.includes('chat') || clsLower.includes('conversation') || clsLower.includes('interactive')) return true;
-
                     // 阻断各类用户/助理聊天消息气泡的变体
-                    if (/(^|\b|[-_])(user|human|client|customer|my|ai|bot|assistant)([-_]?(message|msg|bubble|query|chat|input|text|content))(\b|$)/i.test(className)) {
-                        return true;
-                    }
-                    if (/(^|\b|[-_])(message|msg|bubble|query|chat|input|text|content)([-_]?(user|human|client|customer|my|ai|bot|assistant))(\b|$)/i.test(className)) {
+                    if (/(^|\b|[-_])(user|human|client|customer|my)([-_]?(message|msg|bubble|query|chat|input|text|content))(\b|$)/i.test(className)) {
                         return true;
                     }
                 }
@@ -289,38 +303,18 @@ function generateJs() {
                     } catch (e) {}
                 }
 
-                // 1. 快速排除基础禁止标签
-                if (BLOCKED_TAGS.includes(tag)) {
-                    // 对于 INPUT, TEXTAREA 和 SVG，虽然不翻译其子元素或内容，但需要翻译其 placeholder, title, aria-label 等属性
-                    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SVG') {
-                        if (!isInBlockedZone(node.parentElement)) {
-                            for (const attr of ['placeholder', 'title', 'aria-label']) {
-                                const v = node.getAttribute(attr);
-                                if (v) {
-                                    const t = norm(v);
-                                    const shortcutTrans = translateWithShortcut(t);
-                                    if (shortcutTrans) node.setAttribute(attr, shortcutTrans);
-                                    else if (map.has(t)) node.setAttribute(attr, map.get(t));
-                                    else if (lowerMap.has(t.toLowerCase())) node.setAttribute(attr, lowerMap.get(t.toLowerCase()));
-                                }
-                            }
-                        }
+                // 对于元素属性 (placeholder, title, aria-label)，进行属性汉化
+                for (const attr of ['placeholder', 'title', 'aria-label']) {
+                    const v = node.getAttribute(attr);
+                    if (v) {
+                        const trans = translateAttr(v);
+                        if (trans) node.setAttribute(attr, trans);
                     }
-                    return;
                 }
-                
-                // 2. 只有当确实不在禁区时，才翻译其属性
-                if (!isInBlockedZone(node)) {
-                    for (const attr of ['placeholder', 'title', 'aria-label']) {
-                        const v = node.getAttribute(attr);
-                        if (v) {
-                            const t = norm(v);
-                            const shortcutTrans = translateWithShortcut(t);
-                            if (shortcutTrans) node.setAttribute(attr, shortcutTrans);
-                            else if (map.has(t)) node.setAttribute(attr, map.get(t));
-                            else if (lowerMap.has(t.toLowerCase())) node.setAttribute(attr, lowerMap.get(t.toLowerCase()));
-                        }
-                    }
+
+                // 快速排除基础禁止标签的子节点递归
+                if (BLOCKED_TAGS.includes(tag)) {
+                    return;
                 }
 
                 if (node.shadowRoot) translateNode(node.shadowRoot);
@@ -486,6 +480,37 @@ function generateJs() {
                 } else if (/^The (.+?) remote MCP server lets you manage (.+) resources\.?$/i.test(valNorm)) {
                     newVal = valNorm.replace(/^The (.+?) remote MCP server lets you manage (.+) resources\.?$/i, (match, name, res) => {
                         return name + (USE_TW ? " 遠端 MCP 伺服器可讓您管理 " : " 远程 MCP 服务器可让您管理 ") + res + (USE_TW ? " 資源。" : " 资源。");
+                    });
+                } else if (/^Worked for (\d+)(s|m|h)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Worked for (\d+)(s|m|h)$/i, (match, n, unit) => {
+                        const u = unit === 's' ? '秒' : unit === 'm' ? (USE_TW ? '分鐘' : '分钟') : (USE_TW ? '小時' : '小时');
+                        return (USE_TW ? '工作耗時 ' : '工作耗时 ') + n + u;
+                    });
+                } else if (/^Thought for (\d+)(s|m|h)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Thought for (\d+)(s|m|h)$/i, (match, n, unit) => {
+                        const u = unit === 's' ? '秒' : unit === 'm' ? (USE_TW ? '分鐘' : '分钟') : (USE_TW ? '小時' : '小时');
+                        return (USE_TW ? '思考耗時 ' : '思考耗时 ') + n + u;
+                    });
+                } else if (/^(\d+) files? changed$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(\d+) files? changed$/i, (match, n) => {
+                        return USE_TW ? (n + ' 個檔案變更') : (n + ' 个文件变动');
+                    });
+                } else if (/^(\d+)(s|m|h|d) ago$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(\d+)(s|m|h|d) ago$/i, (match, n, unit) => {
+                        const u = unit === 's' ? '秒' : unit === 'm' ? (USE_TW ? '分鐘' : '分钟') : unit === 'h' ? (USE_TW ? '小時' : '小时') : '天';
+                        return n + u + (USE_TW ? '前' : '前');
+                    });
+                } else if (/^(\d+) active conversations?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^(\d+) active conversations?$/i, (match, n) => {
+                        return USE_TW ? (n + ' 個活躍對話') : (n + ' 个活跃会话');
+                    });
+                } else if (/^Show (\d+) breakdowns?$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Show (\d+) breakdowns?$/i, (match, n) => {
+                        return USE_TW ? ('顯示 ' + n + ' 個細目') : ('显示 ' + n + ' 个细目');
+                    });
+                } else if (/^Send feedback as (.+)$/i.test(valNorm)) {
+                    newVal = valNorm.replace(/^Send feedback as (.+)$/i, (match, p) => {
+                        return USE_TW ? ('以此身分傳送意見回饋：' + p) : ('以此身份发送反馈：' + p);
                     });
                 } else {
                     // 2. 长句子串滑动替换与前缀截断智能匹配 (缩短至前 18 字符即可高精度命中)

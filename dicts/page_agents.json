@@ -28,5 +28,7 @@
     "A permanent Chief of Staff conversation in the sidebar that manages your other conversations: delegate tasks, check status, and read results from one place.": "侧边栏常驻的「幕僚长」会话，统筹管理您的所有会话：一站式分派任务、查看进度及读取结果。",
     "Chief of Staff voice message failed": "幕僚长语音消息处理失败",
     "Adds an Autonomous Mode switch to the modes dropdown below the input box. Turns sent with it on run non-interactively: the agent does not ask questions or request new permissions.": "在输入框下方的模式下拉菜单中添加「自主模式」开关。开启后以非交互式运行：智能体不会打断提问或请求新权限。",
-    "Autonomous mode active: the agent works independently and does not ask questions or request new permissions.": "自主模式已激活：智能体将独立完成任务，不会中途提问或请求新权限。"
+    "Autonomous mode active: the agent works independently and does not ask questions or request new permissions.": "自主模式已激活：智能体将独立完成任务，不会中途提问或请求新权限。",
+    "Automations": "自动化",
+    "No automations configured.": "暂无已配置的自动化任务。"
 }
