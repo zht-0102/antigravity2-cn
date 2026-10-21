@@ -1,0 +1,12 @@
+scratch/
+_temp_asar/
+node_modules/
+.DS_Store
+AGENTS.md
+
+# Tool-specific exclusions
+.playwright-mcp/
+.reasonix/
+.codex/
+codex/
+.codegraph/

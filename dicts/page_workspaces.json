@@ -1,0 +1,15 @@
+{
+    "Loading conversation...": "正在加载对话...",
+    "Failed to load conversation": "加载对话失败",
+    "Failed to delete conversation": "删除对话失败",
+    "Conversation History": "对话历史",
+    "When enabled, this agent will be able to access past conversations to inform its responses.": "启用后，此智能体将能够访问过去的对话记录，以为其响应提供参考。",
+    "Clone current workspace into a new independent workspace": "将当前工作区克隆为一个全新的独立工作区",
+    "Create Fork in New Workspace": "在新工作区中创建会话分支 (Fork)",
+    "Create Fork in Shared Workspace": "在共享工作区中创建会话分支 (Fork)",
+    "Archive Workspace": "归档工作区",
+    "Archive project": "归档项目",
+    "Commands the agent can run outside the sandbox in this workspace.": "智能体在当前工作区中允许在沙箱之外运行的命令。",
+    "Fork conversation in this folder": "在此文件夹下创建会话分支",
+    "A shell setup script run before every command the agent executes in this project. Overrides the global script.": "智能体在此项目中每次执行命令前运行的 Shell 初始化脚本。将覆盖全局脚本设置。"
+}
